@@ -170,6 +170,16 @@ All cases: L = 0.01 H, C = 0.001 F. Only R varies.
 | Critically damped | 6.325 | 1.000 | 316.2 | Straight collapse, no spiral |
 | Overdamped | 20.0 | 3.162 | 316.2 | Slow descent, no rotation |
 
+## LIMITATIONS
+
+Both models are linear, small-signal approximations. They are valid 
+near the operating point and do not capture nonlinear phenomena such 
+as inverter trip thresholds, actuator saturation, governor deadbands, 
+or large-signal transients. The Iberian blackout involved cascading 
+nonlinear disconnections that no linear model can reproduce. The helix 
+shows the system's intended behavior. Reality departs from it when 
+nonlinearities dominate.
+
 ## References
 
 [1] P. Kundur, *Power System Stability and Control*, McGraw-Hill/EPRI, 1994. Chapters 11–12: Control of Active Power and Reactive Power.
