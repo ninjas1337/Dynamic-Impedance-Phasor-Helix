@@ -1,4 +1,4 @@
-# Dynamic Phasor Helix
+# Dynamic Impedance Phasor Helix
 
 **A 3D visualization of control system stability that unifies Bode, Nyquist, and time-domain analysis into a single geometric object.**
 
