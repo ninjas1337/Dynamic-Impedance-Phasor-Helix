@@ -18,7 +18,7 @@
 ![RLC Helix](preview/dynamic_imp_phasor_rlc.png)
 
 ### Bode & Nyquist
-![Bode Nyquist](preview/bode-nyquist.png)
+![Bode Nyquist](preview/bode_nyquist.png)
 
 ---
 
