@@ -8,11 +8,14 @@
 ---
 ## Preview
 
+### Traditional Bode
+![LFC Helix](preview/bode.png)
+
 ### LFC Dynamic Phasor Helix
-![LFC Helix](preview/lfc-helix.png)
+![LFC Helix](preview/dynamic_imp_phasor_lfc.png)
 
 ### RLC Circuit Helix
-![RLC Helix](preview/rlc-helix.png)
+![RLC Helix](preview/dynamic_imp_phasor_rlc.png)
 
 ### Bode & Nyquist
 ![Bode Nyquist](preview/bode-nyquist.png)
