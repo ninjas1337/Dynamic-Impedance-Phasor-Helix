@@ -2,7 +2,7 @@
 
 **A 3D visualization of control system stability that unifies Bode, Nyquist, and time-domain analysis into a single geometric object.**
 
-*Sanjin Redzic B.Sc. — Process Control & Electrical Engineer*  
+*Sanjin Redzic B.Sc.*  
 *Bergen, Norway — March 2026*
 
 ---
@@ -195,7 +195,6 @@ This repository constitutes dated prior art for the Dynamic Phasor Helix visuali
 ## Author
 
 **Sanjin Redzic B.Sc.**  
-Process Control & Electrical Engineer  
 Bergen, Norway  
 GitHub: [ninjas1337](https://github.com/ninjas1337)
 
