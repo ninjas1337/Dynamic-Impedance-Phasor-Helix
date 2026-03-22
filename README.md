@@ -8,7 +8,7 @@
 ---
 ## Preview
 
-### Traditional Bode
+### Traditional Bode for a Grid
 ![LFC Helix](preview/bode.png)
 
 ### LFC Dynamic Phasor Helix
