@@ -11,14 +11,14 @@
 ### Traditional Bode for a Grid
 ![LFC Helix](preview/bode.png)
 
-### LFC Dynamic Phasor Helix
-![LFC Helix](preview/dynamic_imp_phasor_lfc.png)
-
-### RLC Circuit Helix
-![RLC Helix](preview/dynamic_imp_phasor_rlc.png)
-
 ### Bode & Nyquist
 ![Bode Nyquist](preview/bode_nyquist.png)
+
+### LFC Dynamic Phasor Helix (NEW)
+![LFC Helix](preview/dynamic_imp_phasor_lfc.png)
+
+### RLC Circuit Helix (NEW)
+![RLC Helix](preview/dynamic_imp_phasor_rlc.png)
 
 ---
 
