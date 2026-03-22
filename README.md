@@ -198,7 +198,9 @@ nonlinearities dominate.
 
 ## License
 
-MIT License.
+AGPL-3.0 license
+
+Contact for info +4797621456
 
 This repository constitutes dated prior art for the Dynamic Phasor Helix visualization concept and the stability envelope framework.
 
