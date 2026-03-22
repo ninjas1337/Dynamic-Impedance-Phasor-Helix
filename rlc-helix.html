@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dynamic Impedance Phasor Helix — Series RLC</title>
+  <style>* { margin: 0; padding: 0; box-sizing: border-box; } body { background: #0a0e17; }</style>
+</head>
+<body>
+  <div id="root"></div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+  <script type="text/babel">
+const { useState, useRef, useEffect, useCallback } = React;
+
+
+const C = {
+  bg: "#0a0e17", panel: "#111827", grid: "#1e2a3a", text: "#8899aa",
+  textBright: "#c8d8e8", accent: "#00e5ff", warn: "#ff5252", safe: "#69f0ae",
+  secondary: "#ffab40", reference: "#5c6bc0", safeDim: "rgba(105,240,174,0.15)",
+  secondaryDim: "rgba(255,171,64,0.15)", warnDim: "rgba(255,82,82,0.15)",
+  envelope: "rgba(105,240,174,0.12)", envelopeEdge: "rgba(105,240,174,0.35)",
+};
+
+/*
+  Series RLC circuit step response:
+  
+  L·(dI/dt) + R·I + (1/C)·∫I·dt = V_step
+  
+  Or in terms of capacitor voltage V_c:
+  LC·(d²Vc/dt²) + RC·(dVc/dt) + Vc = V_step
+  
+  State variables: x1 = Vc, x2 = dVc/dt
+  dx1/dt = x2
+  dx2/dt = (1/LC)·(V_step - x1) - (R/L)·x2
+  
+  Analogy to power system:
+    L  ↔  2H  (inertia / inductance)
+    R  ↔  D   (damping / resistance)
+    1/C ↔ 1/R_droop (restoring force)
+    Vc ↔  Δf  (state variable)
+    V_step ↔ ΔP_load (disturbance)
+  
+  Natural frequency: ω_n = 1/√(LC)
+  Damping ratio: ζ = R/(2√(L/C)) = R/(2)·√(C/L)
+*/
+
+function simulate(params, dt, tMax) {
+  const { L, R, Cap, Vstep } = params;
+  let x1 = 0; // Vc (capacitor voltage)
+  let x2 = 0; // dVc/dt
+  const out = [];
+
+  for (let t = 0; t <= tMax; t += dt) {
+    out.push({ t, vc: x1, dvc: x2 });
+
+    // RK4
+    const f = (x1v, x2v) => [
+      x2v,
+      (1 / (L * Cap)) * (Vstep - x1v) - (R / L) * x2v,
+    ];
+
+    const k1 = f(x1, x2);
+    const k2 = f(x1 + 0.5 * dt * k1[0], x2 + 0.5 * dt * k1[1]);
+    const k3 = f(x1 + 0.5 * dt * k2[0], x2 + 0.5 * dt * k2[1]);
+    const k4 = f(x1 + dt * k3[0], x2 + dt * k3[1]);
+
+    x1 += (dt / 6) * (k1[0] + 2 * k2[0] + 2 * k3[0] + k4[0]);
+    x2 += (dt / 6) * (k1[1] + 2 * k2[1] + 2 * k3[1] + k4[1]);
+  }
+  return out;
+}
+
+function computeHelix(data, dt) {
+  // Use Vc - Vstep as deviation (error from final value)
+  // and d(Vc)/dt as rate
+  const pts = [];
+  const Vfinal = data.length > 0 ? data[data.length - 1].vc : 0;
+
+  for (let i = 0; i < data.length; i++) {
+    const x = data[i].vc - Vfinal; // deviation from steady state
+    const y = data[i].dvc;
+    const r = Math.sqrt(x * x + y * y);
+    pts.push({ x, y, z: data[i].t, r, t: data[i].t });
+  }
+  return pts;
+}
+
+// ── 3D Projection ──
+function rotatePoint(x, y, z, thetaX, thetaY) {
+  let x1 = x * Math.cos(thetaY) + z * Math.sin(thetaY);
+  let z1 = -x * Math.sin(thetaY) + z * Math.cos(thetaY);
+  let y1 = y;
+  let y2 = y1 * Math.cos(thetaX) - z1 * Math.sin(thetaX);
+  let z2 = y1 * Math.sin(thetaX) + z1 * Math.cos(thetaX);
+  return { x: x1, y: y2, z: z2 };
+}
+
+function project(x, y, z, rot, W, Hc, viewDist) {
+  const r = rotatePoint(x, y, z, rot.rx, rot.ry);
+  const d = viewDist + r.z;
+  const s = d > 10 ? viewDist / d : viewDist / 10;
+  return { sx: W / 2 + r.x * s, sy: Hc / 2 - r.y * s, depth: r.z };
+}
+
+// ── 3D Canvas ──
+function HelixView({ currentHelix, refHelix, refEnvelope, tMax }) {
+  const canvasRef = useRef(null);
+  const rotRef = useRef({ rx: -0.5, ry: 0.5 });
+  const dragRef = useRef(null);
+  const animRef = useRef(null);
+
+  const draw = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const dpr = window.devicePixelRatio || 1;
+    const W = canvas.parentElement.clientWidth;
+    const Hc = 580;
+    canvas.width = W * dpr; canvas.height = Hc * dpr;
+    canvas.style.width = W + "px"; canvas.style.height = Hc + "px";
+
+    const ctx = canvas.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, Hc);
+
+    const rot = rotRef.current;
+    const viewDist = 500;
+
+    // Auto-scale spatial based on helix content
+    let maxVal = 0.001;
+    for (const pt of currentHelix) {
+      maxVal = Math.max(maxVal, Math.abs(pt.x), Math.abs(pt.y));
+    }
+    if (refHelix) {
+      for (const pt of refHelix) {
+        maxVal = Math.max(maxVal, Math.abs(pt.x), Math.abs(pt.y));
+      }
+    }
+    const spatialScale = 120 / (maxVal + 0.001);
+    const tScale = 300 / tMax;
+    const tOffset = -150;
+
+    const p = (x, y, z) => project(
+      x * spatialScale, z * tScale + tOffset, y * spatialScale,
+      rot, W, Hc, viewDist
+    );
+
+    // Grid floor
+    ctx.strokeStyle = C.grid; ctx.lineWidth = 0.4;
+    const gridRange = maxVal * 1.2;
+    const gridStep = gridRange / 4;
+    for (let v = -gridRange; v <= gridRange + 0.0001; v += gridStep) {
+      const p1 = p(v, -gridRange, 0), p2 = p(v, gridRange, 0);
+      ctx.beginPath(); ctx.moveTo(p1.sx, p1.sy); ctx.lineTo(p2.sx, p2.sy); ctx.stroke();
+      const p3 = p(-gridRange, v, 0), p4 = p(gridRange, v, 0);
+      ctx.beginPath(); ctx.moveTo(p3.sx, p3.sy); ctx.lineTo(p4.sx, p4.sy); ctx.stroke();
+    }
+
+    // Axes
+    const o = p(0, 0, 0);
+    const axLen = gridRange * 0.9;
+
+    const ax = p(axLen, 0, 0);
+    ctx.strokeStyle = C.accent; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(o.sx, o.sy); ctx.lineTo(ax.sx, ax.sy); ctx.stroke();
+    ctx.fillStyle = C.accent; ctx.font = "11px monospace"; ctx.textAlign = "left";
+    ctx.fillText("Vc - V∞", ax.sx + 4, ax.sy);
+
+    const ay = p(0, axLen, 0);
+    ctx.strokeStyle = C.secondary; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(o.sx, o.sy); ctx.lineTo(ay.sx, ay.sy); ctx.stroke();
+    ctx.fillStyle = C.secondary;
+    ctx.fillText("dVc/dt", ay.sx + 4, ay.sy);
+
+    const az = p(0, 0, tMax);
+    ctx.strokeStyle = C.textBright; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(o.sx, o.sy); ctx.lineTo(az.sx, az.sy); ctx.stroke();
+    ctx.fillStyle = C.textBright; ctx.font = "10px monospace";
+    ctx.fillText("t", az.sx + 4, az.sy);
+
+    // Time ticks
+    const tStep = tMax <= 5 ? 0.5 : tMax <= 20 ? 2 : 5;
+    for (let t = tStep; t < tMax; t += tStep) {
+      const tp = p(0, 0, t);
+      ctx.fillStyle = C.text; ctx.font = "8px monospace"; ctx.textAlign = "center";
+      ctx.fillText(t % 1 === 0 ? t + "s" : t.toFixed(1) + "s", tp.sx - 12, tp.sy + 3);
+    }
+
+    // Envelope
+    if (refEnvelope && refEnvelope.length > 0) {
+      const envSegments = 48;
+      const envTimeStep = Math.max(1, Math.floor(refEnvelope.length / 40));
+
+      for (let ti = 0; ti < refEnvelope.length; ti += envTimeStep) {
+        const env = refEnvelope[ti];
+        if (env.r < maxVal * 0.005) continue;
+        const pts = [];
+        for (let j = 0; j <= envSegments; j++) {
+          const angle = (j / envSegments) * Math.PI * 2;
+          pts.push(p(env.r * Math.cos(angle), env.r * Math.sin(angle), env.t));
+        }
+        ctx.strokeStyle = C.envelopeEdge; ctx.lineWidth = 0.7;
+        ctx.beginPath();
+        for (let j = 0; j < pts.length; j++) {
+          j === 0 ? ctx.moveTo(pts[j].sx, pts[j].sy) : ctx.lineTo(pts[j].sx, pts[j].sy);
+        }
+        ctx.stroke();
+      }
+
+      // Ribs
+      for (let j = 0; j < envSegments; j += 6) {
+        const angle = (j / envSegments) * Math.PI * 2;
+        ctx.strokeStyle = C.envelope; ctx.lineWidth = 0.5;
+        ctx.beginPath(); let started = false;
+        for (let ti = 0; ti < refEnvelope.length; ti += envTimeStep) {
+          const env = refEnvelope[ti];
+          const pp = p(env.r * Math.cos(angle), env.r * Math.sin(angle), env.t);
+          if (!started) { ctx.moveTo(pp.sx, pp.sy); started = true; } else ctx.lineTo(pp.sx, pp.sy);
+        }
+        ctx.stroke();
+      }
+    }
+
+    // Reference helix
+    if (refHelix && refHelix.length > 1) {
+      ctx.strokeStyle = C.reference; ctx.lineWidth = 1; ctx.globalAlpha = 0.35; ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      const rp0 = p(refHelix[0].x, refHelix[0].y, refHelix[0].z);
+      ctx.moveTo(rp0.sx, rp0.sy);
+      for (let i = 1; i < refHelix.length; i += 2) {
+        const rp = p(refHelix[i].x, refHelix[i].y, refHelix[i].z);
+        ctx.lineTo(rp.sx, rp.sy);
+      }
+      ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+    }
+
+    // Current helix
+    if (currentHelix && currentHelix.length > 1) {
+      const redDots = [];
+      for (let i = 1; i < currentHelix.length; i++) {
+        const h0 = currentHelix[i - 1], h1 = currentHelix[i];
+        const pp0 = p(h0.x, h0.y, h0.z), pp1 = p(h1.x, h1.y, h1.z);
+
+        let outside = false;
+        if (refEnvelope && i < refEnvelope.length) {
+          outside = h1.r > refEnvelope[i].r * 1.25 && refEnvelope[i].r > maxVal * 0.005 && h1.t > tMax * 0.025;
+        }
+
+        const t = i / currentHelix.length;
+        let color;
+        if (outside) {
+          color = C.warn;
+          if (i % 4 === 0) redDots.push({ sx: pp1.sx, sy: pp1.sy });
+        } else {
+          color = `rgb(${Math.round(t * 100)},${Math.round(229 - t * 80)},255)`;
+        }
+
+        ctx.strokeStyle = color; ctx.lineWidth = outside ? 3 : 2.5;
+        ctx.beginPath(); ctx.moveTo(pp0.sx, pp0.sy); ctx.lineTo(pp1.sx, pp1.sy); ctx.stroke();
+      }
+
+      for (const dot of redDots) {
+        ctx.fillStyle = C.warn; ctx.shadowColor = C.warn; ctx.shadowBlur = 8;
+        ctx.beginPath(); ctx.arc(dot.sx, dot.sy, 4, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.shadowBlur = 0;
+
+      const sp = p(currentHelix[0].x, currentHelix[0].y, currentHelix[0].z);
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath(); ctx.arc(sp.sx, sp.sy, 5, 0, Math.PI * 2); ctx.fill();
+
+      const last = currentHelix[currentHelix.length - 1];
+      const ep = p(last.x, last.y, last.z);
+      ctx.fillStyle = C.safe;
+      ctx.beginPath(); ctx.arc(ep.sx, ep.sy, 4, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // Labels
+    ctx.fillStyle = C.text; ctx.font = "9px monospace"; ctx.textAlign = "left";
+    ctx.fillText("Complex plane (Vc-V∞, dVc/dt) × time", 10, 16);
+    ctx.fillText("Drag to rotate", 10, Hc - 8);
+    ctx.fillStyle = C.envelopeEdge; ctx.fillText("○ Reference envelope (ζ = 0.707 critically flat)", 10, 30);
+    ctx.fillStyle = C.accent; ctx.fillText("━ Circuit response helix", 10, 42);
+    ctx.fillStyle = C.warn; ctx.fillText("● Outside envelope", 10, 54);
+
+  }, [currentHelix, refHelix, refEnvelope, tMax]);
+
+  useEffect(() => {
+    draw();
+    const h = () => draw();
+    window.addEventListener("resize", h);
+    return () => window.removeEventListener("resize", h);
+  }, [draw]);
+
+  const handleMouseDown = (e) => {
+    dragRef.current = { x: e.clientX, y: e.clientY, rx: rotRef.current.rx, ry: rotRef.current.ry };
+  };
+  const handleMouseMove = (e) => {
+    if (!dragRef.current) return;
+    rotRef.current = {
+      rx: dragRef.current.rx + (e.clientY - dragRef.current.y) * 0.005,
+      ry: dragRef.current.ry + (e.clientX - dragRef.current.x) * 0.005,
+    };
+    if (animRef.current) cancelAnimationFrame(animRef.current);
+    animRef.current = requestAnimationFrame(draw);
+  };
+  const handleMouseUp = () => { dragRef.current = null; };
+
+  return (
+    <canvas ref={canvasRef} style={{ display: "block", width: "100%", cursor: "grab" }}
+      onMouseDown={handleMouseDown} onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp} />
+  );
+}
+
+function Slider({ label, value, min, max, step, onChange, unit, color }) {
+  const [editing, setEditing] = useState(false);
+  const [editVal, setEditVal] = useState("");
+  const inputRef = useRef(null);
+
+  const handleStartEdit = () => {
+    setEditVal(value < 0.01 ? value.toExponential(1) : value < 1 ? value.toFixed(step < 0.001 ? 4 : step < 0.01 ? 3 : 2) : value.toFixed(step < 0.1 ? 2 : 1));
+    setEditing(true);
+  };
+
+  useEffect(() => {
+    if (editing && inputRef.current) inputRef.current.focus();
+  }, [editing]);
+
+  const handleConfirm = () => {
+    const parsed = parseFloat(editVal);
+    if (!isNaN(parsed)) {
+      onChange(Math.min(max, Math.max(min, parsed)));
+    }
+    setEditing(false);
+  };
+
+  return (
+    <div style={{ marginBottom: 8 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
+        <span style={{ color: C.text, fontSize: 10, fontFamily: "monospace" }}>{label}</span>
+        {editing ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+            <input
+              ref={inputRef}
+              type="text"
+              value={editVal}
+              onChange={(e) => setEditVal(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleConfirm(); if (e.key === "Escape") setEditing(false); }}
+              onBlur={handleConfirm}
+              style={{
+                width: 70, fontSize: 11, fontFamily: "monospace", fontWeight: "bold",
+                color: color || C.accent, background: C.bg, border: `1px solid ${color || C.accent}`,
+                borderRadius: 3, padding: "1px 4px", textAlign: "right", outline: "none",
+              }}
+            />
+            <span style={{ color: C.text, fontSize: 10, fontFamily: "monospace" }}>{unit || ""}</span>
+          </div>
+        ) : (
+          <span
+            onClick={handleStartEdit}
+            style={{
+              color: color || C.accent, fontSize: 11, fontFamily: "monospace", fontWeight: "bold",
+              cursor: "text", borderBottom: `1px dashed ${color || C.accent}44`,
+            }}
+          >
+            {value < 0.01 ? value.toExponential(1) : value < 1 ? value.toFixed(step < 0.001 ? 4 : step < 0.01 ? 3 : 2) : value.toFixed(step < 0.1 ? 2 : 1)}
+            {unit ? ` ${unit}` : ""}
+          </span>
+        )}
+      </div>
+      <input type="range" min={min} max={max} step={step} value={value}
+        onChange={(e) => onChange(parseFloat(e.target.value))}
+        style={{ width: "100%", accentColor: color || C.accent }} />
+    </div>
+  );
+}
+
+window.App = function RLCHelix() {
+  const [L, setL] = useState(0.01);      // 10 mH
+  const [R, setR] = useState(10);         // 10 Ω
+  const [Cap, setCap] = useState(0.001);  // 1000 μF
+  const [Vstep, setVstep] = useState(5);  // 5V step
+
+  const omega_n = 1 / Math.sqrt(L * Cap);
+  const zeta = R / (2 * Math.sqrt(L / Cap));
+  const omega_d = zeta < 1 ? omega_n * Math.sqrt(1 - zeta * zeta) : 0;
+  const sigma = -zeta * omega_n;
+
+  // Time scale: ~5 time constants
+  const tau = zeta > 0 ? 1 / (zeta * omega_n) : 1 / omega_n;
+  const tMax = Math.min(Math.max(tau * 5, 0.001), 10);
+  const dt = tMax / 2000;
+
+  const params = { L, R, Cap, Vstep };
+  const currentData = simulate(params, dt, tMax);
+  const currentHelix = computeHelix(currentData, dt);
+
+  // Reference: ζ = 0.707 (Butterworth / maximally flat) with same L and C
+  const R_ref = 2 * 0.707 * Math.sqrt(L / Cap);
+  const refParams = { L, R: R_ref, Cap, Vstep };
+  const refData = simulate(refParams, dt, tMax);
+  const refHelix = computeHelix(refData, dt);
+  const refEnvelope = refHelix.map((pt) => ({ t: pt.t, r: pt.r }));
+
+  const maxRadius = currentHelix.length > 0 ? Math.max(...currentHelix.map((p) => p.r)) : 0;
+
+  // Status
+  const halfIdx = Math.floor(currentHelix.length / 2);
+  let lateExceeds = 0, lateCount = 0;
+  for (let i = halfIdx; i < currentHelix.length && i < refEnvelope.length; i++) {
+    lateCount++;
+    if (currentHelix[i].r > refEnvelope[i].r * 1.2 && refEnvelope[i].r > maxRadius * 0.005) lateExceeds++;
+  }
+  const pctLateOutside = lateCount > 0 ? lateExceeds / lateCount : 0;
+
+  const status = zeta <= 0 ? { text: "UNSTABLE", color: C.warn }
+    : pctLateOutside > 0.2 ? { text: "UNDERDAMPED", color: C.secondary }
+    : zeta < 0.3 ? { text: "LIGHTLY DAMPED", color: C.secondary }
+    : zeta >= 0.9 ? { text: "OVERDAMPED", color: C.textBright }
+    : { text: "WELL DAMPED", color: C.safe };
+
+  // Circuit type label
+  const circuitType = zeta > 1 ? "Overdamped" : zeta === 1 ? "Critically damped" : zeta > 0 ? "Underdamped" : "Unstable";
+
+  return (
+    <div style={{ background: C.bg, minHeight: "100vh", color: C.textBright, fontFamily: "monospace", padding: "12px 10px" }}>
+      <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet" />
+
+      <div style={{ marginBottom: 10, borderBottom: `1px solid ${C.grid}`, paddingBottom: 8 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: 1.5, color: C.accent, textTransform: "uppercase" }}>
+          Series RLC — Dynamic Phasor Helix
+        </div>
+        <div style={{ fontSize: 9, color: C.text, marginTop: 3 }}>
+          Step response of Vc(t) in phase space × time — same math as LFC, different labels
+        </div>
+      </div>
+
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        {/* Controls */}
+        <div style={{ width: 200, flexShrink: 0, background: C.panel, borderRadius: 5, padding: "10px 12px", border: `1px solid ${C.grid}` }}>
+
+          <div style={{
+            textAlign: "center", padding: "6px 0", marginBottom: 10, borderRadius: 4,
+            background: status.color === C.safe ? C.safeDim : status.color === C.secondary ? C.secondaryDim : status.color === C.warn ? C.warnDim : C.panel,
+            border: `1px solid ${status.color}`,
+          }}>
+            <div style={{ fontSize: 9, color: C.text, letterSpacing: 1 }}>CIRCUIT RESPONSE</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: status.color }}>{status.text}</div>
+          </div>
+
+          {/* Computed parameters */}
+          <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
+            <div style={{ flex: 1, background: C.bg, borderRadius: 3, padding: "4px 6px", textAlign: "center" }}>
+              <div style={{ fontSize: 8, color: C.text }}>ζ (damping ratio)</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: zeta > 0.3 ? C.safe : zeta > 0.1 ? C.secondary : C.warn }}>
+                {zeta.toFixed(3)}
+              </div>
+            </div>
+            <div style={{ flex: 1, background: C.bg, borderRadius: 3, padding: "4px 6px", textAlign: "center" }}>
+              <div style={{ fontSize: 8, color: C.text }}>ω_n (natural)</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: C.accent }}>
+                {omega_n < 1000 ? omega_n.toFixed(1) : (omega_n / 1000).toFixed(1) + "k"} rad/s
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
+            <div style={{ flex: 1, background: C.bg, borderRadius: 3, padding: "4px 6px", textAlign: "center" }}>
+              <div style={{ fontSize: 8, color: C.text }}>σ (decay rate)</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: sigma < -1 ? C.safe : sigma < 0 ? C.secondary : C.warn }}>
+                {sigma.toFixed(1)} /s
+              </div>
+            </div>
+            <div style={{ flex: 1, background: C.bg, borderRadius: 3, padding: "4px 6px", textAlign: "center" }}>
+              <div style={{ fontSize: 8, color: C.text }}>ω_d (damped)</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: C.secondary }}>
+                {omega_d < 1000 ? omega_d.toFixed(1) : (omega_d / 1000).toFixed(1) + "k"} rad/s
+              </div>
+            </div>
+          </div>
+
+          <div style={{ background: C.bg, borderRadius: 3, padding: "4px 6px", marginBottom: 10, textAlign: "center" }}>
+            <span style={{ fontSize: 9, color: C.text }}>{circuitType}</span>
+            <span style={{ fontSize: 9, color: C.text }}> · f_n = </span>
+            <span style={{ fontSize: 10, fontWeight: 700, color: C.accent }}>
+              {(omega_n / (2 * Math.PI)) < 1000 ? (omega_n / (2 * Math.PI)).toFixed(1) + " Hz" : ((omega_n / (2 * Math.PI)) / 1000).toFixed(2) + " kHz"}
+            </span>
+          </div>
+
+          {/* Component sliders */}
+          <div style={{ fontSize: 9, color: "#e040fb", letterSpacing: 1, marginBottom: 4, textTransform: "uppercase" }}>Inductance</div>
+          <Slider label="L" value={L} min={0.0001} max={0.1} step={0.0001} onChange={setL} unit="H" color="#e040fb" />
+          <div style={{ fontSize: 8, color: C.text, marginBottom: 8 }}>
+            = {L >= 0.001 ? (L * 1000).toFixed(1) + " mH" : (L * 1e6).toFixed(0) + " μH"}
+            <span style={{ color: C.text, opacity: 0.5 }}> ↔ inertia (2H)</span>
+          </div>
+
+          <div style={{ fontSize: 9, color: C.safe, letterSpacing: 1, marginBottom: 4, textTransform: "uppercase" }}>Resistance</div>
+          <Slider label="R" value={R} min={0.1} max={100} step={0.1} onChange={setR} unit="Ω" color={C.safe} />
+          <div style={{ fontSize: 8, color: C.text, marginBottom: 8 }}>
+            <span style={{ color: C.text, opacity: 0.5 }}>↔ damping (D)</span>
+          </div>
+
+          <div style={{ fontSize: 9, color: C.secondary, letterSpacing: 1, marginBottom: 4, textTransform: "uppercase" }}>Capacitance</div>
+          <Slider label="C" value={Cap} min={0.00001} max={0.01} step={0.00001} onChange={setCap} unit="F" color={C.secondary} />
+          <div style={{ fontSize: 8, color: C.text, marginBottom: 8 }}>
+            = {Cap >= 0.001 ? (Cap * 1000).toFixed(1) + " mF" : (Cap * 1e6).toFixed(0) + " μF"}
+            <span style={{ color: C.text, opacity: 0.5 }}> ↔ 1/droop (restoring)</span>
+          </div>
+
+          <div style={{ fontSize: 9, color: C.accent, letterSpacing: 1, marginBottom: 4, textTransform: "uppercase" }}>Excitation</div>
+          <Slider label="V_step" value={Vstep} min={0.5} max={24} step={0.5} onChange={setVstep} unit="V" color={C.accent} />
+          <div style={{ fontSize: 8, color: C.text, marginBottom: 8, opacity: 0.6 }}>
+            Linear system — V_step scales amplitude only. View is auto-scaled.
+          </div>
+
+          <div style={{ borderTop: `1px solid ${C.grid}`, marginTop: 10, paddingTop: 8, fontSize: 9, color: C.text, lineHeight: 1.6 }}>
+            <span style={{ color: C.safe }}>Green envelope</span> = ζ=0.707 reference (maximally flat / Butterworth).
+            Same L and C, R adjusted to R = 2·0.707·√(L/C) = {R_ref.toFixed(2)} Ω.
+            Drag 3D view to rotate.
+          </div>
+
+          <div style={{ marginTop: 8, fontSize: 9, color: C.text, lineHeight: 1.5, borderTop: `1px solid ${C.grid}`, paddingTop: 8 }}>
+            <span style={{ color: C.textBright, fontWeight: 700 }}>ANALOGY:</span><br />
+            L ↔ 2H (inertia)<br />
+            R ↔ D (damping)<br />
+            1/C ↔ 1/R_droop (restoring force)<br />
+            Vc ↔ Δf (state variable)<br />
+            V_step ↔ ΔP_load (disturbance)<br />
+            Same helix. Same math.
+          </div>
+        </div>
+
+        {/* 3D View */}
+        <div style={{ flex: 1, minWidth: 300 }}>
+          <div style={{ background: C.panel, border: `1px solid ${C.grid}`, borderRadius: 5, padding: 4 }}>
+            <HelixView
+              currentHelix={currentHelix}
+              refHelix={refHelix}
+              refEnvelope={refEnvelope}
+              tMax={tMax}
+            />
+          </div>
+
+          <div style={{
+            marginTop: 8, padding: "8px 10px", background: C.panel, borderRadius: 3,
+            border: `1px solid ${C.grid}`, fontSize: 9, lineHeight: 1.7, color: C.text,
+          }}>
+            <span style={{ color: C.accent, fontWeight: 700 }}>WHAT YOU SEE: </span>
+            The capacitor voltage deviation from steady state and its rate of change
+            form a phase portrait. With time as the vertical axis — a helix.
+            Underdamped: the helix spirals inward — ringing.
+            Critically damped: it collapses without spiraling.
+            Overdamped: slow decay, no rotation.
+            <br /><br />
+            <span style={{ color: C.safe, fontWeight: 700 }}>TRY: </span>
+            Decrease R toward zero — the helix spirals many times, ringing.
+            Increase R — the helix collapses fast with fewer spirals.
+            Keep going — overdamped, the helix becomes a straight descent.
+            Change L — the inertia changes, the natural frequency shifts.
+            Change C — the restoring force changes.
+            Same physics as the power system helix, just measured in volts and amps instead of Hz and MW.
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(window.App));
+  </script>
+</body>
+</html>
