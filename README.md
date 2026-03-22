@@ -6,6 +6,18 @@
 *Bergen, Norway — March 2026*
 
 ---
+## Preview
+
+### LFC Dynamic Phasor Helix
+![LFC Helix](preview/lfc-helix.png)
+
+### RLC Circuit Helix
+![RLC Helix](preview/rlc-helix.png)
+
+### Bode & Nyquist
+![Bode Nyquist](preview/bode-nyquist.png)
+
+---
 
 ## Motivation
 
