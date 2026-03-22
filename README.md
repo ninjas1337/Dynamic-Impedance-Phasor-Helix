@@ -202,11 +202,13 @@ MIT License.
 
 This repository constitutes dated prior art for the Dynamic Phasor Helix visualization concept and the stability envelope framework.
 
-## Author
+## Author & Co-Author
 
 **Sanjin Redzic B.Sc.**  
 Bergen, Norway  
 GitHub: [ninjas1337](https://github.com/ninjas1337)
+
+Co-Author: Anthropic Claude Opus 4.6 because I am shit at coding. 
 
 ---
 
