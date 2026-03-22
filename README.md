@@ -2,7 +2,7 @@
 
 **A 3D visualization of control system stability that unifies Bode, Nyquist, and time-domain analysis into a single geometric object.**
 
-*Sanjin Redzic B.Sc.*  
+*Sanjin Redzic B.Sc. — Process Control & Electrical Engineer*  
 *Bergen, Norway — March 2026*
 
 ---
@@ -11,7 +11,7 @@
 
 The classical tools for analyzing feedback stability — Bode plots (1930s) and Nyquist plots (1940s) — are two-dimensional projections of a higher-dimensional object. The Bode plot decomposes the loop transfer function phasor into magnitude and phase, plotted separately against frequency. The Nyquist plot traces the phasor tip through the complex plane, parameterized by frequency. The step response shows amplitude against time. Each representation discards a dimension that the others retain.
 
-This project introduces the **Dynamic Impedance Phasor Helix**: the phase portrait (state variable and its derivative) extruded along a time axis, forming a three-dimensional spiral. The helix encodes magnitude (radius), phase (rotation), damping (collapse rate), and temporal evolution simultaneously. A **stability envelope** — derived from a reference system's decay profile — provides a geometric boundary: the helix must stay inside the funnel. If it breaks through, stability margins have been exceeded and the system becomes unstable/collapses.
+This project introduces the **Dynamic Phasor Helix**: the phase portrait (state variable and its derivative) extruded along a time axis, forming a three-dimensional spiral. The helix encodes magnitude (radius), phase (rotation), damping (collapse rate), and temporal evolution simultaneously. A **stability envelope** — derived from a reference system's decay profile — provides a geometric boundary: the helix must stay inside the funnel. If it breaks through, stability margins have been exceeded.
 
 The key observation is that the Bode plot, Nyquist plot, and step response are all projections of this helix:
 
@@ -19,7 +19,7 @@ The key observation is that the Bode plot, Nyquist plot, and step response are a
 - **View from the side** (complex plane collapsed) → Step response envelope: amplitude vs. time.
 - **Magnitude and phase read separately at each height** → Bode plot information: gain and phase vs. frequency.
 
-The human visual system processes three-dimensional spatial relationships natively. A spiral collapsing inside a funnel communicates stability without requiring the viewer to cross-reference two separate 2D graphs or mentally track encirclement of a critical point which can be difficult.
+The human visual system processes three-dimensional spatial relationships natively. A spiral collapsing inside a funnel communicates stability without requiring the viewer to cross-reference two separate 2D graphs or mentally track encirclement of a critical point.
 
 ## Contents
 
@@ -180,6 +180,7 @@ This repository constitutes dated prior art for the Dynamic Phasor Helix visuali
 ## Author
 
 **Sanjin Redzic B.Sc.**  
+Process Control & Electrical Engineer  
 Bergen, Norway  
 GitHub: [ninjas1337](https://github.com/ninjas1337)
 
