@@ -5,7 +5,27 @@
 *Sanjin Redzic B.Sc.*  
 *Bergen, Norway — March 2026*
 
+[![Live Demo](https://img.shields.io/badge/demo-live-00e5ff)](https://ninjas1337.github.io/Dynamic-Impedance-Phasor-Helix/)
+[![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.19321817-5c6bc0)](https://doi.org/10.5281/zenodo.19321817)
+[![License: AGPL v3](https://img.shields.io/badge/license-AGPL--3.0-69f0ae)](LICENSE)
+
 ---
+
+## Live Demo
+
+**[Open the interactive models →](https://ninjas1337.github.io/Dynamic-Impedance-Phasor-Helix/)**
+
+All models run directly in the browser. Nothing to install, no build step, no React environment required. Drag the helices to rotate them; move the sliders to re-solve the system in real time.
+
+| Model | Direct link |
+|-------|-------------|
+| **All three, one page** | [Dynamic-Impedance-Phasor-Helix](https://ninjas1337.github.io/Dynamic-Impedance-Phasor-Helix/) |
+| LFC Helix | [lfc-helix.html](https://ninjas1337.github.io/Dynamic-Impedance-Phasor-Helix/lfc-helix.html) |
+| RLC Helix | [rlc-helix.html](https://ninjas1337.github.io/Dynamic-Impedance-Phasor-Helix/rlc-helix.html) |
+| Bode & Nyquist | [bode-nyquist.html](https://ninjas1337.github.io/Dynamic-Impedance-Phasor-Helix/bode-nyquist.html) |
+
+---
+
 ## Preview
 
 ### Traditional Bode for a Grid
@@ -38,16 +58,18 @@ The human visual system processes three-dimensional spatial relationships native
 
 ## Contents
 
-The repository contains four interactive visualization tools, all implementing the same underlying mathematics with different parameterizations:
+The repository contains the same underlying mathematics under several parameterizations. The `.html` files are self-contained and runnable as-is; the `.jsx` files are the bare React components for embedding elsewhere.
 
-| Tool | File | Domain | Parameters |
-|------|------|--------|------------|
-| **Bode & Nyquist** | `lfc-bode-nyquist.jsx` | Power system LFC | H, D, R, Tg, Tt, Ki |
-| **LFC Helix** | `dynamic-phasor-helix.jsx` | Power system LFC | H, D, R, Tg, Tt, Ki |
-| **RLC Helix** | `rlc-helix.jsx` | Series RLC circuit | L, R, C, V_step |
-| **Bode (original)** | `bode-lfc.jsx` | Power system LFC | H, D, R, Tg, Tt, Ki |
+| Tool | Runnable page | Component source | Domain | Parameters |
+|------|---------------|------------------|--------|------------|
+| **Bode & Nyquist** | `bode-nyquist.html` | `lfc-bode-nyquist.jsx` | Power system LFC | H, D, R, Tg, Tt, Ki |
+| **LFC Helix** | `lfc-helix.html` | `dynamic-phasor-helix.jsx` | Power system LFC | H, D, R, Tg, Tt, Ki |
+| **RLC Helix** | `rlc-helix.html` | `rlc-bode-nyquist-helix.jsx` | Series RLC circuit | L, R, C, V_step |
+| **Bode (original)** | — | `bode-lfc.jsx` | Power system LFC | H, D, R, Tg, Tt, Ki |
 
-All tools are React components (`.jsx`) designed to run in browser-based environments. Parameters are adjustable via interactive sliders with real-time updates.
+`index.html` combines all three runnable models into a single tabbed page and is what the live demo serves.
+
+Parameters are adjustable via interactive sliders with real-time updates. `Dynamic_Impedance_Phasor_Helix.pdf` is the accompanying paper.
 
 ## The Model
 
@@ -147,7 +169,11 @@ The tools in this repository were developed on the same day the ENTSO-E final re
 
 ## How to Use
 
-The `.jsx` files are React components. They can be rendered in any React environment or in platforms that support JSX artifacts (e.g., Claude.ai).
+The fastest route is the **[live demo](https://ninjas1337.github.io/Dynamic-Impedance-Phasor-Helix/)** — the models run in the browser with no setup.
+
+**Running locally:** download any `.html` file from this repository and open it in a browser. The files are self-contained; React and Babel are loaded from a CDN, so an internet connection is needed on first load.
+
+**Embedding:** the `.jsx` files are plain React components and can be rendered in any React environment, or in platforms that support JSX artifacts.
 
 ### LFC Helix — Suggested Experiments
 
@@ -170,15 +196,24 @@ All cases: L = 0.01 H, C = 0.001 F. Only R varies.
 | Critically damped | 6.325 | 1.000 | 316.2 | Straight collapse, no spiral |
 | Overdamped | 20.0 | 3.162 | 316.2 | Slow descent, no rotation |
 
-## LIMITATIONS
+## Limitations
 
-Both models are linear, small-signal approximations. They are valid 
-near the operating point and do not capture nonlinear phenomena such 
-as inverter trip thresholds, actuator saturation, governor deadbands, 
-or large-signal transients. The Iberian blackout involved cascading 
-nonlinear disconnections that no linear model can reproduce. The helix 
-shows the system's intended behavior. Reality departs from it when 
-nonlinearities dominate.
+Both models are linear, small-signal approximations. They are valid near the operating point and do not capture nonlinear phenomena such as inverter trip thresholds, actuator saturation, governor deadbands, or large-signal transients. The Iberian blackout involved cascading nonlinear disconnections that no linear model can reproduce. The helix shows the system's intended behavior. Reality departs from it when nonlinearities dominate.
+
+## Citation
+
+Redzic, S. (2026). *Dynamic Impedance Phasor Helix*. Zenodo. https://doi.org/10.5281/zenodo.19321817
+
+```bibtex
+@misc{redzic2026helix,
+  author       = {Redzic, Sanjin},
+  title        = {Dynamic Impedance Phasor Helix},
+  year         = {2026},
+  publisher    = {Zenodo},
+  doi          = {10.5281/zenodo.19321817},
+  url          = {https://doi.org/10.5281/zenodo.19321817}
+}
+```
 
 ## References
 
