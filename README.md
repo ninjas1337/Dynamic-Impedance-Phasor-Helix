@@ -1,6 +1,6 @@
 # Dynamic Impedance Phasor Helix
 
-**A 3D visualization of control system stability that unifies Bode, Nyquist, and time-domain analysis into a single geometric object.**
+**A 3D visualization of control-system dynamics: the closed-loop step response drawn as a helix in phase space × time, set against its frequency-domain counterpart, the Bode and Nyquist plots of the open loop.**
 
 *Sanjin Redzic B.Sc.*  
 *Bergen, Norway — March 2026*
@@ -8,6 +8,8 @@
 [![Live Demo](https://img.shields.io/badge/demo-live-00e5ff)](https://ninjas1337.github.io/Dynamic-Impedance-Phasor-Helix/)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.19321817-5c6bc0)](https://doi.org/10.5281/zenodo.19321817)
 [![License: AGPL v3](https://img.shields.io/badge/license-AGPL--3.0-69f0ae)](LICENSE)
+
+> **Status: work in progress.** The tools run, and the mathematics inside each one is standard and checked. The conceptual framing — what exactly the time-domain helix and the frequency-domain plots are to each other — is still being worked out. This README states the current understanding, including a correction to an earlier claim, rather than a finished result.
 
 ---
 
@@ -44,32 +46,50 @@ All models run directly in the browser. Nothing to install, no build step, no Re
 
 ## Motivation
 
-The classical tools for analyzing feedback stability — Bode plots (1930s) and Nyquist plots (1940s) — are two-dimensional projections of a higher-dimensional object. The Bode plot decomposes the loop transfer function phasor into magnitude and phase, plotted separately against frequency. The Nyquist plot traces the phasor tip through the complex plane, parameterized by frequency. The step response shows amplitude against time. Each representation discards a dimension that the others retain.
+The classical tools for analyzing feedback stability — Bode plots (1930s) and Nyquist plots (1940s) — are two-dimensional pictures of one complex function, the open-loop frequency response L(jω). The Bode plot decomposes it into magnitude and phase, each plotted against frequency. The Nyquist plot traces its tip through the complex plane with frequency as the parameter. Neither of them shows time. The step response shows time and nothing else. Each picture discards something the others keep.
 
-This project introduces the **Dynamic Phasor Helix**: the phase portrait (state variable and its derivative) extruded along a time axis, forming a three-dimensional spiral. The helix encodes magnitude (radius), phase (rotation), damping (collapse rate), and temporal evolution simultaneously. A **stability envelope** — derived from a reference system's decay profile — provides a geometric boundary: the helix must stay inside the funnel. If it breaks through, stability margins have been exceeded.
+This project builds the **Dynamic Phasor Helix**: the closed-loop phase portrait (state variable against its own time derivative) extruded along a time axis, forming a three-dimensional spiral. The helix encodes instantaneous amplitude (radius), instantaneous phase (rotation), damping (taper), and temporal evolution simultaneously. A **reference envelope**, derived from a benchmark system's decay profile, gives a geometric comparison: a system that recovers at least as well as the benchmark stays inside the funnel.
 
-The key observation is that the Bode plot, Nyquist plot, and step response are all projections of this helix:
+The human visual system processes three-dimensional spatial relationships natively. A spiral collapsing inside a funnel communicates recovery without cross-referencing two separate 2D graphs. The project began as an attempt to understand Bode and Nyquist by finding the geometry underneath them, and the most useful thing it has produced so far is the distinction in the next section.
 
-- **View from above** (time axis collapsed) → Nyquist plot: the phasor curve in the complex plane.
-- **View from the side** (complex plane collapsed) → Step response envelope: amplitude vs. time.
-- **Magnitude and phase read separately at each height** → Bode plot information: gain and phase vs. frequency.
+## Two Helices, and What Projects onto What
 
-The human visual system processes three-dimensional spatial relationships natively. A spiral collapsing inside a funnel communicates stability without requiring the viewer to cross-reference two separate 2D graphs or mentally track encirclement of a critical point.
+An earlier version of this README claimed that the Bode plot, the Nyquist plot and the step response are all projections of the time-domain helix. That claim is withdrawn. Two of the three cannot be projections of it, and seeing why is the point.
+
+There are two distinct three-dimensional curves involved, living in different spaces.
+
+**The time-domain helix** — what `lfc-helix.html` and `rlc-helix.html` draw — lives in (x, ẋ/ω_d, t). It is the closed-loop response to a step input. Its literal projections are:
+
+- **Viewed down the time axis:** the phase portrait, a logarithmic spiral.
+- **Viewed from the side:** the step response and its decay envelope.
+- **Read in cylindrical coordinates at each height:** the instantaneous amplitude r(t) and instantaneous phase θ(t) of the response — the analytic-signal envelope and phase for a narrowband mode [10].
+
+For a single complex pole pair s = σ ± jω_d, the helix *is* the pole: it is e^{st} traced in (Re, Im, t). The decay rate σ sets the taper; ω_d sets the pitch. The s-plane, usually drawn as a flat map of points, is a catalogue of such helices.
+
+**The frequency-domain helix** lives in (ω, Re L(jω), Im L(jω)): the open-loop frequency response as a space curve. Its literal projections are:
+
+- **Viewed down the ω axis:** the Nyquist plot.
+- **In cylindrical coordinates against ω:** the Bode magnitude plot and the Bode phase plot.
+- **Magnitude against phase, ω as parameter:** the Nichols chart.
+
+This is the standard relationship between the classical charts [8][9]. `bode-nyquist.html` draws two of these projections for the same plant; the space curve itself is not drawn yet.
+
+**What connects the two helices** is not projection but the Laplace transform [11], and in practice the Nyquist criterion: the encirclements of −1 by L(jω) determine the closed-loop poles, and the closed-loop poles determine the time-domain helix. The frequency-domain picture tells you *which* time-domain helix you will get. Both pictures are "magnitude and phase", but of different objects — L(jω) as a function of frequency, and the response as a function of time. That shared vocabulary is what made the projection claim look true.
+
+A note on the name: *phasor* in this project refers to the rotating state vector in the phase plane, not to a steady-state sinusoidal phasor at a fixed frequency. The two rotate for different reasons. The name predates the distinction being clear.
 
 ## Contents
 
 The repository contains the same underlying mathematics under several parameterizations. The `.html` files are self-contained and runnable as-is; the `.jsx` files are the bare React components for embedding elsewhere.
 
-| Tool | Runnable page | Component source | Domain | Parameters |
-|------|---------------|------------------|--------|------------|
-| **Bode & Nyquist** | `bode-nyquist.html` | `lfc-bode-nyquist.jsx` | Power system LFC | H, D, R, Tg, Tt, Ki |
-| **LFC Helix** | `lfc-helix.html` | `dynamic-phasor-helix.jsx` | Power system LFC | H, D, R, Tg, Tt, Ki |
-| **RLC Helix** | `rlc-helix.html` | `rlc-bode-nyquist-helix.jsx` | Series RLC circuit | L, R, C, V_step |
-| **Bode (original)** | — | `bode-lfc.jsx` | Power system LFC | H, D, R, Tg, Tt, Ki |
+| Tool | Runnable page | Component source | Domain | Object drawn | Parameters |
+|------|---------------|------------------|--------|--------------|------------|
+| **LFC Helix** | `lfc-helix.html` | `dynamic-phasor-helix.jsx` | Power system LFC | Time-domain helix | H, D, R, Tg, Tt, Ki |
+| **RLC Helix** | `rlc-helix.html` | `rlc-bode-nyquist-helix.jsx` | Series RLC circuit | Time-domain helix | L, R, C, V_step |
+| **Bode & Nyquist** | `bode-nyquist.html` | `lfc-bode-nyquist.jsx` | Power system LFC | Frequency-domain projections | H, D, R, Tg, Tt, Ki |
+| **Bode (original)** | — | `bode-lfc.jsx` | Power system LFC | Frequency-domain projection | H, D, R, Tg, Tt, Ki |
 
-`index.html` combines all three runnable models into a single tabbed page and is what the live demo serves.
-
-Parameters are adjustable via interactive sliders with real-time updates. `Dynamic_Impedance_Phasor_Helix.pdf` is the accompanying paper.
+`index.html` combines the three runnable models into a single tabbed page and is what the live demo serves. `Dynamic_Impedance_Phasor_Helix.pdf` is the accompanying paper; its text predates the correction above and will be revised.
 
 ## The Model
 
@@ -91,6 +111,14 @@ Where:
 | **Tg** | Governor time constant [s] — servo actuator (wicket gates, steam valve) | — |
 | **Tt** | Turbine time constant [s] — prime mover response (water starting time, steam path) | — |
 | **Ki** | AGC integral gain — secondary frequency control | — |
+
+The closed-loop characteristic equation 1 + L(s) = 0 is, with AGC active,
+
+```
+2H·Tg·Tt·s⁴ + [D·Tg·Tt + 2H(Tg+Tt)]·s³ + [D(Tg+Tt) + 2H]·s² + (D + 1/R)·s + Ki = 0
+```
+
+and its roots are found numerically (Durand–Kerner). The dominant complex pair gives σ, ω_d and ζ for the readouts.
 
 ### Series RLC Circuit
 
@@ -128,22 +156,22 @@ This is not metaphorical. The differential equations are identical. The same hel
 
 ## The Helix Construction
 
-1. **Simulate** the step response using 4th-order Runge-Kutta integration.
-2. **Construct the phase portrait**: plot the state variable deviation against its time derivative at each time step.
-3. **Extrude along time**: the phase portrait point at each instant becomes a point in 3D space (x = state deviation, y = derivative, z = time).
+1. **Simulate** the step response using 4th-order Runge–Kutta integration.
+2. **Construct the phase portrait**: plot the state variable deviation against its time derivative at each time step. The derivative is scaled by 1/ω_d so that an undamped mode traces a circle rather than an ellipse; the trajectory of a damped mode is then a logarithmic spiral.
+3. **Extrude along time**: the phase portrait point at each instant becomes a point in 3D space (x = state deviation, y = scaled derivative, z = time).
 4. **The trajectory forms a helix**: an underdamped system spirals inward as it rises; an overdamped system descends without rotation; an unstable system spirals outward.
-5. **Overlay the stability envelope**: circular cross-sections at each time step whose radii are derived from a reference system's decay profile. The helix must remain within this funnel.
+5. **Overlay the reference envelope**: circular cross-sections at each time step whose radii are taken from a benchmark system's decay profile.
 
-## The Stability Envelope
+## The Reference Envelope
 
-The envelope is derived from a fixed reference system — a conventional well-damped system (H = 6s for LFC, ζ = 1/√2 for RLC). It represents the expected recovery profile of a known-good system. The current system's helix is compared against this fixed boundary:
+The envelope is derived from a fixed benchmark system — a conventional well-damped one (H = 6 s for LFC, ζ = 1/√2 for RLC). It is the expected recovery profile of a known-good system, and the current system's helix is compared against it:
 
-- **Inside the envelope**: the system recovers within acceptable margins.
+- **Inside the envelope**: the system recovers at least as well as the benchmark.
 - **Initial overshoot beyond envelope**: expected for lower-inertia systems — not a stability problem if the helix subsequently collapses.
-- **Sustained exceedance in the tail**: the system is recovering too slowly or oscillating beyond design limits.
+- **Sustained exceedance in the tail**: the system is recovering more slowly, or oscillating more, than the benchmark.
 - **Expanding helix**: the system is unstable — the spiral grows with each revolution.
 
-The closed-loop pole locations are computed numerically via the Durand-Kerner method applied to the characteristic polynomial. The dominant pole's real part σ, damping ratio ζ, and damped natural frequency ωd are displayed alongside the helix.
+The envelope is a **performance comparison, not a stability criterion**. Stability is decided by the closed-loop pole locations, which are computed and displayed alongside the helix. The envelope answers a different question: does this system recover as well as one we already trust?
 
 ## Context: The Iberian Blackout
 
@@ -151,21 +179,23 @@ On 28 April 2025, the Iberian Peninsula experienced a complete power blackout �
 
 At the time of the event, renewable sources accounted for 78% of electricity generation in the Iberian system, with solar alone contributing nearly 60% [3]. The majority of solar capacity used grid-following inverters providing no frequency-responsive behavior.
 
-The helix visualization illustrates the underlying dynamics: when system inertia H is low and load damping D is eroded (as occurs when synchronous machines are replaced by inverter-based resources and DOL motors are replaced by VSDs), the helix expands beyond the stability envelope. The correction vectors arrive with incorrect phase alignment — the push arrives when the swing is returning. Constructive reinforcement of the disturbance replaces the intended damping.
+The helix visualization illustrates the underlying small-signal dynamics: when system inertia H is low and load damping D is eroded (as occurs when synchronous machines are replaced by inverter-based resources and DOL motors are replaced by VSDs), the helix expands beyond the reference envelope. This is the low-inertia problem described in the power-systems literature [12][13], made visible as geometry.
 
 The tools in this repository were developed on the same day the ENTSO-E final report was published.
 
 ## Relation to Prior Work
 
-**2D phase portraits** are classical (Poincaré, 1880s) and appear in every dynamics textbook. Spiral sinks, sources, centers, and saddle points are well-characterized.
+**2D phase portraits** are classical (Poincaré, 1880s) and appear in every dynamics textbook [6][7]. Spiral sinks, sources, centers, and saddle points are well-characterized.
 
 **3D phase portraits** exist for three-state systems (e.g., the Lorenz attractor), where three state variables are plotted against each other. These use three spatial dimensions but do not include time as an explicit axis.
 
-**Phase portrait with time axis** has been implemented in neuroscience visualization tools (e.g., DataView, St Andrews) for displaying membrane potential dynamics as spirals. These are data visualization tools without stability envelopes or control system application.
+**Phase portrait with time axis** has been implemented in neuroscience visualization tools (e.g., DataView, St Andrews) for displaying membrane potential dynamics as spirals. These are data visualization tools without reference envelopes or control-system application.
 
 **Phase portrait envelope control** has been explored in vehicle dynamics (Bobier, Stanford, 2012) [4] for stability boundaries in the yaw rate–sideslip plane. This is 2D with adaptive boundaries, not 3D with time.
 
-**The specific combination presented here** — a phase portrait extruded along a time axis with a reference-derived stability envelope, applied to control system analysis, with the explicit framing as a unification of Bode/Nyquist/step-response projections — does not appear in the published literature surveyed as of March 2026.
+**The frequency response as a space curve** in (ω, Re, Im), with Bode, Nyquist and Nichols as its projections, is textbook material [8][9]; the Nichols chart was introduced in 1947 precisely as a third view of the same data.
+
+**What this project can claim as its own**, subject to a fuller literature search, is the specific construction of a closed-loop phase portrait extruded along time with a benchmark-derived envelope, applied to power-system frequency control and the inertia question. The earlier claim that Bode and Nyquist are projections of this same helix is withdrawn; see *Two Helices* above.
 
 ## How to Use
 
@@ -198,7 +228,19 @@ All cases: L = 0.01 H, C = 0.001 F. Only R varies.
 
 ## Limitations
 
-Both models are linear, small-signal approximations. They are valid near the operating point and do not capture nonlinear phenomena such as inverter trip thresholds, actuator saturation, governor deadbands, or large-signal transients. The Iberian blackout involved cascading nonlinear disconnections that no linear model can reproduce. The helix shows the system's intended behavior. Reality departs from it when nonlinearities dominate.
+**Modelling.** Both models are linear, small-signal approximations. They are valid near the operating point and do not capture nonlinear phenomena such as inverter trip thresholds, actuator saturation, governor deadbands, or large-signal transients. The Iberian blackout involved cascading nonlinear disconnections that no linear model can reproduce. The helix shows the system's intended behavior. Reality departs from it when nonlinearities dominate.
+
+**Conceptual.** The time-domain helix and the frequency-domain plots are related by the Laplace transform, not by projection; see *Two Helices*. The reference envelope is a benchmark comparison, not a stability criterion.
+
+**Numerical.** In the LFC tool, the ω used to scale the derivative axis is currently estimated from zero crossings of Δf, which is fragile when the slow AGC mode contaminates the response; the ω_d from the computed poles is the better choice and will replace it. The Nyquist plot in `bode-nyquist.html` clips the locus near the origin pole introduced by the AGC integrator rather than drawing the formal indentation, so it is a visual aid rather than a rigorous encirclement count.
+
+## Work in Progress
+
+- Draw the frequency-domain space curve (ω, Re L(jω), Im L(jω)) with the Nyquist, Bode and Nichols planes shown as live shadows of it, so that the projection relationship stated above can be seen rather than read.
+- Replace the zero-crossing ω estimate in the LFC helix with ω_d from the computed dominant pole.
+- Add the origin-pole indentation to the Nyquist plot so the encirclement count is formally valid with AGC active.
+- The LFC system has four poles; the helix is dominated by one pair. Show the residual modes.
+- Revise the paper text to match the corrected framing in this README.
 
 ## Citation
 
@@ -229,7 +271,21 @@ Redzic, S. (2026). *Dynamic Impedance Phasor Helix*. Zenodo. https://doi.org/10.
 
 [6] H. Nyquist, "Regeneration theory," *Bell System Technical Journal*, vol. 11, no. 1, pp. 126–147, January 1932.
 
-[7] UCTE/ENTSO-E, "Operation Handbook — Policy 1: Load-Frequency Control and Performance," Appendix 1.
+[7] A. A. Andronov, A. A. Vitt, S. E. Khaikin, *Theory of Oscillators*, Pergamon, 1966.
+
+[8] H. M. James, N. B. Nichols, R. S. Phillips, *Theory of Servomechanisms*, MIT Radiation Laboratory Series vol. 25, McGraw-Hill, 1947.
+
+[9] K. Ogata, *Modern Control Engineering*, 5th ed., Prentice Hall, 2010, Ch. 7.
+
+[10] D. Gabor, "Theory of communication," *Journal of the Institution of Electrical Engineers*, vol. 93, no. 26, pp. 429–457, 1946.
+
+[11] A. V. Oppenheim, A. S. Willsky, S. H. Nawab, *Signals and Systems*, 2nd ed., Prentice Hall, 1997, §3.2 and Ch. 9.
+
+[12] F. Milano, F. Dörfler, G. Hug, D. J. Hill, G. Verbič, "Foundations and Challenges of Low-Inertia Systems," *Power Systems Computation Conference (PSCC)*, 2018.
+
+[13] A. Ulbig, T. S. Borsche, G. Andersson, "Impact of Low Rotational Inertia on Power System Stability and Operation," *IFAC Proceedings Volumes*, vol. 47, no. 3, pp. 7290–7297, 2014.
+
+[14] UCTE/ENTSO-E, "Operation Handbook — Policy 1: Load-Frequency Control and Performance," Appendix 1.
 
 ## License
 
@@ -237,7 +293,7 @@ AGPL-3.0 license
 
 Contact for info +4797621456
 
-This repository constitutes dated prior art for the Dynamic Phasor Helix visualization concept and the stability envelope framework.
+This repository constitutes dated prior art for the Dynamic Phasor Helix visualization concept and the reference envelope framework.
 
 ## Author & Co-Author
 
