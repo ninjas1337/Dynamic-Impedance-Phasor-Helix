@@ -14,7 +14,6 @@
   <script type="text/babel">
 const { useState, useRef, useEffect, useCallback } = React;
 
-
 // Complex number helpers
 const cx = (re, im) => ({ re, im });
 const cxMul = (a, b) => cx(a.re * b.re - a.im * b.im, a.re * b.im + a.im * b.re);
@@ -460,7 +459,7 @@ function NyquistPlot({ freqs, complexPts, refComplexPts, margins, hoverFreq, onH
         ctx.strokeStyle = "rgba(255,255,255,0.7)"; ctx.lineWidth = 1.5;
         ctx.beginPath(); ctx.moveTo(ox, oy); ctx.lineTo(px, py); ctx.stroke();
 
-        // Re projection (damping axis)
+        // Re projection (in-phase axis)
         ctx.strokeStyle = C.reProj; ctx.lineWidth = 1.5; ctx.setLineDash([3, 3]);
         ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px, oy); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(ox, oy); ctx.lineTo(px, oy); ctx.stroke();
@@ -495,7 +494,7 @@ function NyquistPlot({ freqs, complexPts, refComplexPts, margins, hoverFreq, onH
 
         // Re projection label at axis
         ctx.fillStyle = C.reProj; ctx.font = "9px monospace"; ctx.textAlign = "center";
-        ctx.fillText("damping", px, oy + 14);
+        ctx.fillText("in-phase", px, oy + 14);
 
         // Im projection label at axis
         ctx.fillStyle = C.imProj; ctx.textAlign = "right";
@@ -505,7 +504,7 @@ function NyquistPlot({ freqs, complexPts, refComplexPts, margins, hoverFreq, onH
 
     // Axis titles
     ctx.fillStyle = C.textBright; ctx.font = "10px monospace"; ctx.textAlign = "center";
-    ctx.fillText("Re{L(jω)} — damping axis", pad.l + pw / 2, Hc - 4);
+    ctx.fillText("Re{L(jω)} — in-phase", pad.l + pw / 2, Hc - 4);
     ctx.save(); ctx.translate(10, pad.t + ph / 2); ctx.rotate(-Math.PI / 2);
     ctx.fillText("Im{L(jω)} — quadrature", 0, 0); ctx.restore();
 
@@ -782,7 +781,7 @@ window.App = function PowerSystemLFC() {
             <span><span style={{ color: C.accent }}>━</span> |L| magnitude</span>
             <span><span style={{ color: C.secondary }}>━</span> ∠L phase</span>
             <span><span style={{ color: C.critical }}>◉</span> critical (-1,0)</span>
-            <span style={{ color: C.reProj }}>━ Re (damping)</span>
+            <span style={{ color: C.reProj }}>━ Re (in-phase)</span>
             <span style={{ color: C.imProj }}>━ Im (quadrature)</span>
             {showReference && <span><span style={{ color: C.referenceDim }}>╌</span> ref H=6s</span>}
           </div>
@@ -790,12 +789,14 @@ window.App = function PowerSystemLFC() {
           {/* Explanation */}
           <div style={{ marginTop: 8, padding: "8px 10px", background: C.panel, borderRadius: 3, border: `1px solid ${C.grid}`, fontSize: 9, lineHeight: 1.6, color: C.text }}>
             <span style={{ color: C.accent, fontWeight: 700 }}>NYQUIST: </span>
-            Hover over the curve to see the phasor decomposed into its orthogonal projections.
-            <span style={{ color: C.reProj }}> Green (Re)</span> is the damping axis — negative means
-            the correction opposes the error. <span style={{ color: C.imProj }}>Orange (Im)</span> is
-            the quadrature axis — it shifts frequency but doesn't damp.
-            When the curve passes through <span style={{ color: C.critical }}>(-1, 0)</span> the
-            entire correction vector is pure reinforcement at unity gain. Two opposing vectors stop canceling.
+            Hover over the curve to see L(jω) split into its in-phase and quadrature parts.
+            <span style={{ color: C.reProj }}> Green (Re)</span> is the component of the loop's return
+            signal in phase with the input sinusoid; <span style={{ color: C.imProj }}>Orange (Im)</span> is
+            the component a quarter cycle out. These describe the open-loop gain at each frequency, not the
+            closed-loop state, so they are not the damping and rate axes of the helix tools.
+            At <span style={{ color: C.critical }}>(-1, 0)</span> the loop returns the signal inverted at
+            unity gain: feedback meant to cancel the error reinforces it instead. Distance from that point
+            is the stability margin, and the encirclement count decides the closed-loop poles that shape the helix.
             <br /><br />
             <span style={{ color: C.secondary, fontWeight: 700 }}>TRY: </span>
             Drag H from 6 → 0.5 and watch the Nyquist curve approach the critical point.

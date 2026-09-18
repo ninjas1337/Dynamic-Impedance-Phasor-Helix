@@ -25,23 +25,23 @@ const C = {
 
 /*
   Series RLC circuit step response:
-  
+
   L·(dI/dt) + R·I + (1/C)·∫I·dt = V_step
-  
+
   Or in terms of capacitor voltage V_c:
   LC·(d²Vc/dt²) + RC·(dVc/dt) + Vc = V_step
-  
+
   State variables: x1 = Vc, x2 = dVc/dt
   dx1/dt = x2
   dx2/dt = (1/LC)·(V_step - x1) - (R/L)·x2
-  
+
   Analogy to power system:
     L  ↔  2H  (inertia / inductance)
     R  ↔  D   (damping / resistance)
     1/C ↔ 1/R_droop (restoring force)
     Vc ↔  Δf  (state variable)
     V_step ↔ ΔP_load (disturbance)
-  
+
   Natural frequency: ω_n = 1/√(LC)
   Damping ratio: ζ = R/(2√(L/C)) = R/(2)·√(C/L)
 */
@@ -280,7 +280,7 @@ function HelixView({ currentHelix, refHelix, refEnvelope, tMax }) {
     ctx.fillStyle = C.text; ctx.font = "9px monospace"; ctx.textAlign = "left";
     ctx.fillText("Complex plane (Vc-V∞, dVc/dt) × time", 10, 16);
     ctx.fillText("Drag to rotate", 10, Hc - 8);
-    ctx.fillStyle = C.envelopeEdge; ctx.fillText("○ Reference envelope (ζ = 0.707 critically flat)", 10, 30);
+    ctx.fillStyle = C.envelopeEdge; ctx.fillText("○ Reference envelope (ζ = 0.707 maximally flat)", 10, 30);
     ctx.fillStyle = C.accent; ctx.fillText("━ Circuit response helix", 10, 42);
     ctx.fillStyle = C.warn; ctx.fillText("● Outside envelope", 10, 54);
 

@@ -14,7 +14,6 @@
   <script type="text/babel">
 const { useState, useRef, useEffect, useCallback } = React;
 
-
 const C = {
   bg: "#0a0e17", panel: "#111827", grid: "#1e2a3a", text: "#8899aa",
   textBright: "#c8d8e8", accent: "#00e5ff", warn: "#ff5252", safe: "#69f0ae",
@@ -465,7 +464,7 @@ function HelixView({ currentHelix, refHelix, refEnvelope, params, tMax, sigma })
     ctx.fillText("Drag to rotate", 10, Hc - 8);
 
     // Envelope legend
-    ctx.fillStyle = C.envelopeEdge; ctx.fillText("○ Stability envelope (H=6s conventional reference)", 10, 30);
+    ctx.fillStyle = C.envelopeEdge; ctx.fillText("○ Reference envelope (H=6s conventional benchmark)", 10, 30);
     ctx.fillStyle = C.accent; ctx.fillText("━ System helix (phase portrait × time)", 10, 42);
     ctx.fillStyle = C.warn; ctx.fillText("● Outside envelope = exceeds reference margins", 10, 54);
   }, [currentHelix, refHelix, refEnvelope, params, tMax, sigma]);
@@ -594,7 +593,7 @@ window.App = function DynamicPhasorHelix() {
 
   // ── Compute closed-loop poles for readouts ──
   const { roots: allPoles, dominant: dominantPole, dominantComplex } = getDominantPole(params);
-  
+
   const envelopePole = dominantComplex || dominantPole;
   const sigma = envelopePole ? envelopePole.re : -0.1;
   const omega_d = dominantComplex ? Math.abs(dominantComplex.im) : (dominantPole ? Math.abs(dominantPole.im) : 0);
